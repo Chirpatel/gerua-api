@@ -11,7 +11,7 @@ const Jimp = require('jimp')
 require('dotenv').config();
 const apibbKey  = process.env.apibbKey
 
-const UploadFolder = "./src/my-images";
+const UploadFolder = "./src/raw";
 
 const storage = multer.diskStorage({
     destination: function (req, file, callback) {
@@ -47,7 +47,7 @@ const postData = async (url, params, data) => {
 
 const createFormData = (image) => {
     var form = new FormData();
-    form.append('image', fs.createReadStream("./src/uploadImages/" + image));
+    form.append('image', fs.createReadStream("./src/raw/" + image));
     return form;
 }
 
@@ -61,7 +61,7 @@ const addWaterMark = async (image) =>{
               return tpl.composite(logoTpl, 0, 0, [Jimp.BLEND_DESTINATION_OVER])
           }),
       )
-      .then( (tpl) => {tpl.write('./src/uploadImages/' + image);removeFile(imgActive)})
+      .then( (tpl) => {tpl.write('./src/raw/upload_' + image);removeFile(imgActive)})
 }
 
 const removeFile = (image) => {
@@ -77,21 +77,20 @@ router.post('/save', upload.single('file'), async (req, res) => {
         } else {
             
             await addWaterMark(req.file.filename);
-            var form = createFormData(req.file.filename);
+            var form = createFormData("upload_"+req.file.filename);
             var url = `https://api.imgbb.com/1/upload`;
             var data = await postData(url, {
                 key: apibbKey
             }, form);
-            removeFile("./src/uploadImages/" + req.file.filename);
+            removeFile("./src/raw/upload_" + req.file.filename);
             return res.send({
                 filename: req.file.filename,
                 success: true,
                 ...data
             })
-
         }
     } catch (err) {
-        removeFile("./src/uploadImages/" + req.file.filename);
+        removeFile("./src/raw/upload_" + req.file.filename);
         console.error(err);
         res.status(500).json({
             err: err,
