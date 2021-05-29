@@ -11,16 +11,13 @@ app.all('/*', function(req, res, next) {
   next();
 });
 app.use(express.json({ extend: false }));
-
+app.use('/static',express.static('src/raw'))
 app.get("/", function(req, res, next) {
   res.json({ message: "alive" });
 });
 
 app.use("/image", require("./routes/saveImage"));
 
-app.set('port', process.env.PORT || 3001);
-console.log("Express server listening on port " + app.get('port'));
-app.listen(app.get('port'));
-
-
-module.exports = app;
+const listener = app.listen(process.env.PORT, () => {
+  console.log("Your app is listening on port " + listener.address().port);
+});
