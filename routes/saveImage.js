@@ -5,6 +5,7 @@ const axios = require("axios");
 const multer = require("multer");
 const FormData = require("form-data");
 const fs = require("fs");
+const Data = require("../model/data");
 const Jimp = require("jimp");
 require("dotenv").config();
 const apibbKey = process.env.apibbKey;
@@ -41,9 +42,9 @@ const postData = async (url, params, data) => {
     data: data
   });
 };
-const getData = (url) =>{
+const getData = url => {
   return axios.get(url);
-}
+};
 const createFormData = async image => {
   var form = new FormData();
   form.append("image", await fs.createReadStream("src/raw/" + image));
@@ -54,14 +55,14 @@ const addWaterMark = async image => {
   let imgActive = UploadFolder + "/" + image;
   await Jimp.read(UploadFolder + "/" + image)
     .then(tpl =>
-      Jimp.read(UploadFolder+"/Logo.png").then(logoTpl => {
+      Jimp.read(UploadFolder + "/Logo.png").then(logoTpl => {
         logoTpl.opacity(0.2);
         logoTpl.resize(tpl.bitmap.width, tpl.bitmap.height);
         return tpl.composite(logoTpl, 0, 0, [Jimp.BLEND_DESTINATION_OVER]);
       })
     )
     .then(tpl => {
-      tpl.write(UploadFolder+"/upload_" + image);
+      tpl.write(UploadFolder + "/upload_" + image);
       removeFile(imgActive);
     });
 };
@@ -69,7 +70,8 @@ const addWaterMark = async image => {
 const removeFile = image => {
   fs.unlinkSync(image);
 };
-router.post("/save", upload.single("file"), async (req, res) => {
+router.post("/save", upload.single("file"), async (req, res, next) => {
+  console.log("Image Save");
   try {
     if (!req.file) {
       return res.send({
@@ -86,20 +88,46 @@ router.post("/save", upload.single("file"), async (req, res) => {
         },
         form
       );
-      removeFile(UploadFolder+"/upload_" + req.file.filename);
-      return res.send({
-        filename: req.file.filename,
-        success: true,
-        ...data
-      });
+      removeFile(UploadFolder + "/upload_" + req.file.filename);
+      req.url = "/add";
+      req.query = {
+        thumImg: data.data.thumb.url,
+        medImg: data.data.medium.url,
+        img: data.data.image.url,
+        ...req.query
+      };
+      router.handle(req, res, next);
     }
   } catch (err) {
-    removeFile(UploadFolder+"/upload_" + req.file.filename);
     console.error(err);
     res.status(500).json({
       err: err,
       msg: "Server error"
     });
+  }
+});
+
+router.post("/add", async (req, res) => {
+  const { name, categories, price, thumImg, medImg, img } = req.query;
+  var images = {
+    thumImg: thumImg,
+    medImg: medImg,
+    img: img
+  };
+  console.log(images);
+  try {
+    let data = new Data({
+      name,
+      categories,
+      price,
+      images,
+      date: new Date()
+    });
+    await data.save();
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json("Server Error");
   }
 });
 

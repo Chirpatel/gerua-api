@@ -1,8 +1,8 @@
 const express = require("express");
-//const connectDB = require("./config/db");
+const connectDB = require("./config/db");
 const app = express();
 const cors = require("cors")
-//connectDB();
+connectDB();
 
 app.use(cors({credentials: true, origin: true}));
 app.all('/*', function(req, res, next) {
@@ -17,6 +17,7 @@ app.get("/", function(req, res, next) {
 });
 
 app.use("/image", require("./routes/saveImage"));
+app.use("/imagedata", require("./routes/addData"));
 
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
