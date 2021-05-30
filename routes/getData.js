@@ -21,6 +21,12 @@ const dataFilter = (datas) => {
 const pageCount = async () =>{
     return await Data.collection.countDocuments();
 }
+
+const dataSort = async (data) =>{
+    await data.sort(function (a, b) {
+        return new Date(b.date).getTime() - new Date(a.date).getTime() ;
+    });
+}
 router.get("/", async (req, res) => {
     let page_size=10;
     if(req.query.pageSize!==undefined && req.query.pageSize<=10 ){
@@ -45,4 +51,20 @@ router.get("/", async (req, res) => {
     }
 });
 
+router.get("/newArrivals", async (req, res) => {
+    let page_size=20;
+    if(req.query.pageSize!==undefined && req.query.pageSize<=20 ){
+        page_size=parseInt(req.query.pageSize);
+    }
+    try {
+        let data = await Data.find()
+        dataSort(data);
+        res.json({
+            data: dataFilter(data).slice(0, page_size)
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json("Server Error");
+    }
+});
 module.exports = router;
