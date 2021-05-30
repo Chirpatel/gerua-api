@@ -1,8 +1,8 @@
 const express = require("express");
-//const connectDB = require("./config/db");
+const connectDB = require("./config/db");
 const app = express();
 const cors = require("cors")
-//connectDB();
+connectDB();
 
 app.use(cors({credentials: true, origin: true}));
 app.all('/*', function(req, res, next) {
@@ -16,7 +16,7 @@ app.get("/", function(req, res, next) {
   res.json({ message: "alive" });
 });
 
-app.use("/image", require("./routes/saveImage"));
+app.use("/data",require('./routes/getData'))
 
 app.set('port', process.env.PORT || 3001);
 console.log("Express server listening on port " + app.get('port'));
