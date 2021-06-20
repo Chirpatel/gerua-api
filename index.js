@@ -17,8 +17,9 @@ app.get("/", function(req, res, next) {
 });
 
 app.use("/image", require("./routes/saveImage"));
-app.use("/imagedata", require("./routes/addData"));
-
+app.use("/imageRemove",require("./routes/removeData"))
+app.use("/login", require("./routes/generateLogin"));
+app.use("/checkLogin", require("./routes/checkLogin"));
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
 });

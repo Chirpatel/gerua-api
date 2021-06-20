@@ -7,9 +7,11 @@ const FormData = require("form-data");
 const fs = require("fs");
 const Data = require("../model/data");
 const Jimp = require("jimp");
+const tinify = require("tinify");
+const watermark = require("image-watermark");
 require("dotenv").config();
 const apibbKey = process.env.apibbKey;
-
+tinify.key = process.env.tinyPngkey;
 const UploadFolder = "src/raw";
 
 const storage = multer.diskStorage({
@@ -21,6 +23,7 @@ const storage = multer.diskStorage({
     callback(null, `image-${Date.now()}.${ext}`);
   }
 });
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const upload = multer({
   storage: storage
@@ -31,7 +34,7 @@ const axiosRequest = async config => {
     return response.data;
   });
 };
-const postData = async (url, params, data) => {
+const postDataForm = async (url, params, data) => {
   return await axiosRequest({
     method: "post",
     url: url,
@@ -51,24 +54,27 @@ const createFormData = async image => {
   return form;
 };
 
-const addWaterMark = async image => {
-  let imgActive = UploadFolder + "/" + image;
-  await Jimp.read(UploadFolder + "/" + image)
-    .then(tpl =>
-      Jimp.read(UploadFolder + "/Logo.png").then(logoTpl => {
-        logoTpl.opacity(0.2);
-        logoTpl.resize(tpl.bitmap.width, tpl.bitmap.height);
-        return tpl.composite(logoTpl, 0, 0, [Jimp.BLEND_DESTINATION_OVER]);
-      })
-    )
-    .then(tpl => {
-      tpl.write(UploadFolder + "/upload_" + image);
-      removeFile(imgActive);
-    });
+const addWaterMark = image => {
+  var options = {
+    text: "Gerua Stone Bracelet",
+    pointsize: 40,
+    color: "black",
+    dstPath: UploadFolder + "/upload_" + image
+  };
+   watermark.embedWatermark(
+    UploadFolder + "/compressed_" + image,
+    options
+  );
+  return true;
 };
 
 const removeFile = image => {
   fs.unlinkSync(image);
+};
+
+const compressImage = async image => {
+  const source = await tinify.fromFile("src/raw/" + image);
+  await source.toFile("src/raw/compressed_" + image);
 };
 router.post("/save", upload.single("file"), async (req, res, next) => {
   console.log("Image Save");
@@ -78,10 +84,12 @@ router.post("/save", upload.single("file"), async (req, res, next) => {
         success: false
       });
     } else {
-      await addWaterMark(req.file.filename);
+      await compressImage(req.file.filename);
+      addWaterMark(req.file.filename)
+      await delay(60000)
       var form = await createFormData("upload_" + req.file.filename);
       var url = `https://api.imgbb.com/1/upload`;
-      var data = await postData(
+      var data = await postDataForm(
         url,
         {
           key: apibbKey
@@ -89,6 +97,8 @@ router.post("/save", upload.single("file"), async (req, res, next) => {
         form
       );
       removeFile(UploadFolder + "/upload_" + req.file.filename);
+      removeFile(UploadFolder +"/compressed_"+ req.file.filename);
+      removeFile(UploadFolder +"/"+ req.file.filename);
       req.url = "/add";
       req.query = {
         thumImg: data.data.thumb.url,
