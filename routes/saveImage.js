@@ -54,18 +54,17 @@ const createFormData = async image => {
   return form;
 };
 
-const addWaterMark = image => {
+const addWaterMark = async (image) => {
   var options = {
-    text: "Gerua Stone Bracelet",
-    pointsize: 40,
+    text: "gitastone.com",
+    pointsize: 100,
     color: "black",
     dstPath: UploadFolder + "/upload_" + image
   };
-   watermark.embedWatermark(
+   await watermark.embedWatermark(
     UploadFolder + "/compressed_" + image,
     options
   );
-  return true;
 };
 
 const removeFile = image => {
@@ -80,33 +79,42 @@ router.post("/save", upload.single("file"), async (req, res, next) => {
   console.log("Image Save");
   try {
     if (!req.file) {
-      return res.send({
+      return res.send({ 
         success: false
       });
     } else {
       await compressImage(req.file.filename);
-      addWaterMark(req.file.filename)
-      await delay(60000)
-      var form = await createFormData("upload_" + req.file.filename);
-      var url = `https://api.imgbb.com/1/upload`;
-      var data = await postDataForm(
-        url,
-        {
-          key: apibbKey
-        },
-        form
-      );
-      removeFile(UploadFolder + "/upload_" + req.file.filename);
-      removeFile(UploadFolder +"/compressed_"+ req.file.filename);
-      removeFile(UploadFolder +"/"+ req.file.filename);
-      req.url = "/add";
-      req.query = {
-        thumImg: data.data.thumb.url,
-        medImg: data.data.medium.url,
-        img: data.data.image.url,
-        ...req.query
-      };
-      router.handle(req, res, next);
+      await addWaterMark(req.file.filename);
+      const checkTime = 1000;
+      const messageFile = "src/raw/upload_" + req.file.filename;
+      const timerId = setInterval(async () => {
+        const isExists = fs.existsSync(messageFile, 'utf8')
+        if(isExists) {
+          console.log("File Available")
+          var form = await createFormData("upload_" + req.file.filename);
+          var url = `https://api.imgbb.com/1/upload`;
+          var data = await postDataForm(
+            url,
+            {
+              key: apibbKey
+            },
+            form
+          );
+          removeFile(UploadFolder + "/upload_" + req.file.filename);
+          removeFile(UploadFolder +"/compressed_"+ req.file.filename);
+          removeFile(UploadFolder +"/"+ req.file.filename);
+          req.url = "/add";
+          req.query = {
+            thumImg: data.data.thumb.url,
+            medImg: data.data.medium.url,
+            img: data.data.image.url,
+            ...req.query
+          };
+          router.handle(req, res, next);
+          clearInterval(timerId)
+        }
+      }, checkTime)
+      
     }
   } catch (err) {
     console.error(err);
